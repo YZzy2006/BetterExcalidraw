@@ -121,6 +121,10 @@ export default defineConfig(({ mode }) => {
               return "mermaid-to-excalidraw";
             }
 
+            if (id.includes("pdfjs-dist")) {
+              return "pdfjs";
+            }
+
             if (id.includes("@codemirror/") || id.includes("@lezer/")) {
               return "codemirror.chunk";
             }
@@ -133,7 +137,7 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       Sitemap({
-        hostname: "https://excalidraw.com",
+        hostname: "https://excalidraw.shunjumc.cn",
         outDir: "build",
         changefreq: "monthly",
         // its static in public folder
@@ -226,10 +230,10 @@ export default defineConfig(({ mode }) => {
           maximumFileSizeToCacheInBytes: 2.3 * 1024 ** 2, // 2.3MB
         },
         manifest: {
-          short_name: "Excalidraw",
-          name: "Excalidraw",
+          short_name: "excalidraw交互画板",
+          name: "excalidraw交互画板",
           description:
-            "Excalidraw is a whiteboard tool that lets you easily sketch diagrams that have a hand-drawn feel to them.",
+            "excalidraw交互画板：基于 Excalidraw 的自托管教学白板，支持 PDF 讲义导入、实时协作批注。",
           icons: [
             {
               src: "android-chrome-192x192.png",

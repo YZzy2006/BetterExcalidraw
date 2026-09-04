@@ -1,0 +1,441 @@
+// -----------------------------------------------------------------------------
+// e-ink / whiteboard brand layer (draw.kuxuewuli.top parity)
+// welcome landing, teacher login card, top-right login trigger
+// -----------------------------------------------------------------------------
+
+@import "../packages/excalidraw/css/variables.module.scss";
+
+// ---- top-right login trigger ------------------------------------------------
+.excalidraw-ui-login {
+  display: inline-flex;
+  align-items: center;
+  height: var(--default-button-height, 2rem);
+  padding: 0 0.9em;
+  border: 1px solid var(--button-border-color, #1b1b24);
+  border-radius: var(--space-factor, 4px);
+  background: transparent;
+  color: var(--color-primary, #6965db);
+  font-size: 0.8em;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--color-primary, #6965db);
+    color: var(--color-primary-contrast-text, #fff);
+  }
+}
+
+// teacher mode: pull every collaborator's view to follow mine
+.excalidraw-ui-force-follow {
+  display: inline-flex;
+  align-items: center;
+  height: var(--default-button-height, 2rem);
+  padding: 0 0.9em;
+  border: 1px solid var(--color-primary, #6965db);
+  border-radius: var(--space-factor, 4px);
+  background: var(--color-primary, #6965db);
+  color: var(--color-primary-contrast-text, #fff);
+  font-size: 0.8em;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+
+  &:hover {
+    filter: brightness(1.1);
+  }
+}
+
+// ---- welcome landing --------------------------------------------------------
+.welcome-screen-center {
+  .kuxue-welcome {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: min(680px, 92vw);
+    max-height: min(86vh, 820px);
+    padding: 24px 30px 18px;
+    overflow: auto;
+    border-radius: 16px;
+    background: #{rgba(#ffffff, 0.86)};
+    box-shadow: rgba(60, 50, 120, 0.1) 0 10px 34px 0;
+    // the built-in .welcome-screen-center is pointer-events:none; the branded
+    // landing must re-enable hits so its CTAs / menu are clickable
+    pointer-events: var(--ui-pointerEvents, auto);
+
+    .kuxue-welcome-btn--primary,
+    .kuxue-welcome-btn--secondary,
+    .kuxue-welcome-brand-sub,
+    .kuxue-welcome-hero-sub,
+    .kuxue-welcome-feature,
+    .kuxue-welcome-step {
+      .theme--dark & {
+        color: #fff;
+      }
+    }
+  }
+
+  .theme--dark .kuxue-welcome {
+    background: #{rgba(#1b1b24, 0.92)};
+    color: #e9e9ef;
+  }
+
+  .kuxue-welcome-brand {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 12px;
+    margin: 0 0 2px;
+  }
+
+  .kuxue-welcome-brand-line {
+    font-size: 0.82em;
+    font-weight: 600;
+    color: #4a5568;
+  }
+
+  .kuxue-welcome-brand-sub {
+    font-size: 0.78em;
+    color: #7a8699;
+  }
+
+  .kuxue-welcome-hero {
+    text-align: center;
+  }
+
+  .kuxue-welcome-hero-title {
+    font-size: 1.7em;
+    font-weight: 800;
+    line-height: 1.2;
+    letter-spacing: 0.01em;
+    color: #1b1b24;
+  }
+
+  .kuxue-welcome-hero-tagline {
+    margin-top: 6px;
+    font-size: 1.02em;
+    font-weight: 600;
+    color: #4a7de0;
+  }
+
+  .kuxue-welcome-hero-sub {
+    margin-top: 4px;
+    font-size: 0.8em;
+    color: #7a8699;
+  }
+
+  .kuxue-welcome-scene {
+    display: flex;
+    justify-content: center;
+  }
+
+  .kuxue-welcome-scene-svg {
+    width: 100%;
+    max-width: 620px;
+    height: auto;
+  }
+
+  .kuxue-welcome-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px 14px;
+    border: 1px solid #ececf2;
+    border-radius: 10px;
+    background: #fafbff;
+  }
+
+  .theme--dark .kuxue-welcome-steps {
+    border-color: #2b2b36;
+    background: #23232d;
+  }
+
+  .kuxue-welcome-step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.84em;
+    color: #2b2b36;
+  }
+
+  .kuxue-welcome-step-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #eef1ff;
+    color: #4a7de0;
+    font-size: 0.72em;
+    font-weight: 700;
+    flex: none;
+  }
+
+  .kuxue-welcome-features {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+
+  .kuxue-welcome-feature {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 0.82em;
+    color: #2b2b36;
+    background: #f6f7fb;
+  }
+
+  .theme--dark .kuxue-welcome-feature {
+    background: #2b2b36;
+  }
+
+  .kuxue-welcome-feature-icon {
+    font-size: 1em;
+    flex: none;
+  }
+
+  .kuxue-welcome-cta {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 2px;
+  }
+
+  .kuxue-welcome-btn {
+    flex: 1;
+    max-width: 240px;
+    padding: 10px 16px;
+    border-radius: 10px;
+    font-size: 0.92em;
+    font-weight: 700;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: transform 0.06s ease, box-shadow 0.12s ease;
+
+    &:active {
+      transform: translateY(1px);
+    }
+  }
+
+  .kuxue-welcome-btn--primary {
+    background: #4a7de0;
+    color: #fff;
+    box-shadow: rgba(74, 125, 224, 0.35) 0 6px 16px -4px;
+
+    &:hover {
+      background: #3f6fd0;
+    }
+  }
+
+  .kuxue-welcome-btn--secondary {
+    background: #fff;
+    color: #4a7de0;
+    border-color: #c9d5f5;
+
+    &:hover {
+      background: #eef1ff;
+    }
+  }
+
+  .theme--dark .kuxue-welcome-btn--secondary {
+    background: #23232d;
+    color: #9db8f5;
+    border-color: #3b3b4a;
+  }
+
+  .kuxue-welcome-menu {
+    margin-top: 2px;
+  }
+}
+
+// ---- login dialog -----------------------------------------------------------
+.kuxue-login-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: min(320px, 80vw);
+
+  .kuxue-login-note {
+    font-size: 0.86em;
+    color: #5b6472;
+    margin: 0;
+  }
+
+  .kuxue-login-tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid #ececf2;
+  }
+
+  .kuxue-login-tab {
+    padding: 6px 14px;
+    border: none;
+    background: transparent;
+    color: #7a8699;
+    font-size: 0.9em;
+    font-weight: 600;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+
+    &.active {
+      color: #4a7de0;
+      border-bottom-color: #4a7de0;
+    }
+  }
+
+  .kuxue-login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .kuxue-login-field {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 9px 11px;
+    border: 1px solid #d5d9e2;
+    border-radius: 8px;
+    font-size: 0.9em;
+    background: #fff;
+    color: #1b1b24;
+
+    &:focus {
+      outline: 2px solid #4a7de0;
+      outline-offset: -1px;
+      border-color: transparent;
+    }
+  }
+
+  .kuxue-login-error {
+    margin: 0;
+    font-size: 0.82em;
+    color: #e0524d;
+  }
+
+  .kuxue-login-error.kuxue-login-ok {
+    color: #2f9e44;
+  }
+
+  .kuxue-login-meta {
+    margin: 0 0 12px;
+    font-size: 0.78em;
+    color: #9aa0b5;
+  }
+
+  .kuxue-login-btn {
+    padding: 9px 0;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.92em;
+    font-weight: 700;
+    cursor: pointer;
+    width: 100%;
+    margin-bottom: 8px;
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+  }
+
+  .kuxue-login-btn--secondary {
+    border: 1px solid #cfd6e4;
+    background: transparent;
+    color: #4a5a78;
+
+    &:hover:not(:disabled) {
+      background: #f0f3f9;
+    }
+  }
+
+  .kuxue-login-btn--primary {
+    background: #4a7de0;
+    color: #fff;
+
+    &:hover:not(:disabled) {
+      background: #3f6fd0;
+    }
+  }
+
+  .kuxue-login-skip {
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: #7a8699;
+    font-size: 0.82em;
+    cursor: pointer;
+
+    &:hover {
+      color: #4a7de0;
+    }
+  }
+
+  .kuxue-login-student {
+    margin: 0;
+    font-size: 0.78em;
+    color: #9aa0b5;
+  }
+
+  .kuxue-login-account {
+    padding: 12px 14px;
+    border: 1px solid #ececf2;
+    border-radius: 8px;
+    background: #fafbff;
+    font-size: 0.92em;
+    font-weight: 600;
+    color: #1b1b24;
+    word-break: break-all;
+  }
+}
+
+.theme--dark .kuxue-login-card {
+  .kuxue-login-note {
+    color: #9aa0b5;
+  }
+
+  .kuxue-login-meta {
+    color: #7a8699;
+  }
+
+  .kuxue-login-error.kuxue-login-ok {
+    color: #69db7c;
+  }
+
+  .kuxue-login-tabs {
+    border-bottom-color: #2b2b36;
+  }
+
+  .kuxue-login-tab {
+    color: #7a8699;
+
+    &.active {
+      color: #9db8f5;
+      border-bottom-color: #9db8f5;
+    }
+  }
+
+  .kuxue-login-field {
+    border-color: #3b3b4a;
+    background: #1e1e26;
+    color: #e9e9ef;
+  }
+
+  .kuxue-login-btn--secondary {
+    border-color: #3b3b4a;
+    color: #9db8f5;
+
+    &:hover:not(:disabled) {
+      background: #2b2b36;
+    }
+  }
+
+  .kuxue-login-account {
+    border-color: #2b2b36;
+    background: #23232d;
+    color: #e9e9ef;
+  }
+}

@@ -1,6 +1,5 @@
 import {
   loginIcon,
-  ExcalLogo,
   eyeIcon,
 } from "@excalidraw/excalidraw/components/icons";
 import { useI18n } from "@excalidraw/excalidraw/i18n";
@@ -12,7 +11,7 @@ import { isDevEnv } from "@excalidraw/common";
 import type { Theme } from "@excalidraw/element/types";
 
 import { LanguageList } from "../app-language/LanguageList";
-import { isExcalidrawPlusSignedUser } from "../app_constants";
+import { DocumentImportMenuItems } from "../documentImport";
 
 import { saveDebugState } from "./DebugCanvas";
 
@@ -22,6 +21,8 @@ export const AppMainMenu: React.FC<{
   isCollabEnabled: boolean;
   theme: Theme | "system";
   refresh: () => void;
+  authEmail: string | null;
+  onOpenLogin: () => void;
 }> = React.memo((props) => {
   const { t } = useI18n();
   return (
@@ -30,36 +31,36 @@ export const AppMainMenu: React.FC<{
       <MainMenu.DefaultItems.SaveToActiveFile />
       <MainMenu.DefaultItems.Export />
       <MainMenu.DefaultItems.SaveAsImage />
+      <MainMenu.Item
+        onSelect={() => {
+          window.open(window.location.origin, "_blank", "noopener");
+        }}
+      >
+        新建窗口
+      </MainMenu.Item>
       {props.isCollabEnabled && (
         <MainMenu.DefaultItems.LiveCollaborationTrigger
           isCollaborating={props.isCollaborating}
           onSelect={() => props.onCollabDialogOpen()}
         />
       )}
+      <MainMenu.Separator />
+      <DocumentImportMenuItems />
+      <MainMenu.Separator />
       <MainMenu.DefaultItems.CommandPalette className="highlighted" />
       <MainMenu.DefaultItems.SearchMenu />
       <MainMenu.DefaultItems.Help />
       <MainMenu.DefaultItems.ClearCanvas />
       <MainMenu.Separator />
-      <MainMenu.ItemLink
-        icon={ExcalLogo}
-        href={`${
-          import.meta.env.VITE_APP_PLUS_LP
-        }/plus?utm_source=excalidraw&utm_medium=app&utm_content=hamburger`}
-        className=""
-      >
-        Excalidraw+
-      </MainMenu.ItemLink>
-      <MainMenu.DefaultItems.Socials />
-      <MainMenu.ItemLink
+      <MainMenu.Item
         icon={loginIcon}
-        href={`${import.meta.env.VITE_APP_PLUS_APP}${
-          isExcalidrawPlusSignedUser ? "" : "/sign-up"
-        }?utm_source=signin&utm_medium=app&utm_content=hamburger`}
+        onSelect={props.onOpenLogin}
         className="highlighted"
       >
-        {isExcalidrawPlusSignedUser ? t("labels.signIn") : t("labels.signUp")}
-      </MainMenu.ItemLink>
+        {props.authEmail
+          ? `教师账号：${props.authEmail}`
+          : "登录 / 注册"}
+      </MainMenu.Item>
       {isDevEnv() && (
         <MainMenu.Item
           icon={eyeIcon}

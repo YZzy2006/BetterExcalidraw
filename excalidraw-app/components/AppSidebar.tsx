@@ -1,130 +1,68 @@
-import { DefaultSidebar, Sidebar, THEME } from "@excalidraw/excalidraw";
-import {
-  messageCircleIcon,
-  presentationIcon,
-} from "@excalidraw/excalidraw/components/icons";
-import { LinkButton } from "@excalidraw/excalidraw/components/LinkButton";
+import { DefaultSidebar, Sidebar, useExcalidrawAPI } from "@excalidraw/excalidraw";
+import { DEFAULT_SIDEBAR } from "@excalidraw/common";
+import { ImageIcon } from "@excalidraw/excalidraw/components/icons";
 import { useUIAppState } from "@excalidraw/excalidraw/context/ui-appState";
+import { useEffect, useRef } from "react";
+
+import type { AppState } from "@excalidraw/excalidraw/types";
+
+import { DocumentPagesPanel } from "../documentImport/DocumentPagesPanel";
 
 import "./AppSidebar.scss";
 
-type SidebarPromoCopyProps = {
-  text: string;
-};
-
-const SidebarPromoCopy = (props: SidebarPromoCopyProps) => {
-  return (
-    <div className="app-sidebar-promo-copy">
-      <div className="app-sidebar-promo-illustration" aria-hidden="true">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 300 250"
-          className="app-sidebar-promo-heart"
-        >
-          <path
-            d="M 145 75
-           C 110 35, 60 55, 65 120
-           C 70 180, 140 190, 215 200
-           C 225 180, 260 110, 235 55
-           C 210 -5, 140 20, 160 105"
-            fill="none"
-            stroke="#D06B64"
-            strokeWidth="16"
-            strokeLinecap="round"
-          />
-        </svg>
-
-        <div className="app-sidebar-promo-trial-note excalifont">
-          14 days of
-          <br />
-          free trial
-        </div>
-        <svg
-          className="app-sidebar-promo-trial-arrow"
-          viewBox="0 0 72 48"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            d="M5 6C23 1 50 8 48 32"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-          />
-          <path
-            d="M42 26L48 32L54 26"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </div>
-      <div className="app-sidebar-promo-text">{props.text}</div>
-    </div>
-  );
-};
-
 export const AppSidebar = () => {
-  const { theme, openSidebar } = useUIAppState();
+  const { openSidebar } = useUIAppState();
+  const excalidrawAPI = useExcalidrawAPI();
+
+  // When a PDF/Office import lands in the scene (any client), surface the
+  // document panel automatically — otherwise the user only sees the first few
+  // materialized pages on canvas and has no obvious way to page through them.
+  // Desktop only: on narrow screens the auto-opened panel covers the canvas,
+  // and the bottom-left flip arrows already give paging.
+  const surfacedDocs = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!excalidrawAPI || window.innerWidth <= 900) {
+      return;
+    }
+    return excalidrawAPI.onChange(() => {
+      let hit = false;
+      for (const el of excalidrawAPI.getSceneElementsIncludingDeleted()) {
+        if (el.type === "image") {
+          const pdfPage = (el as { customData?: { pdfPage?: { docId?: string } } })
+            .customData?.pdfPage;
+          if (pdfPage?.docId && !surfacedDocs.current.has(pdfPage.docId)) {
+            surfacedDocs.current.add(pdfPage.docId);
+            hit = true;
+          }
+        }
+      }
+      if (hit) {
+        excalidrawAPI.updateScene({
+          appState: {
+            openSidebar: {
+              name: DEFAULT_SIDEBAR.name,
+              tab: "documents",
+            } as AppState["openSidebar"],
+          },
+        });
+      }
+    });
+  }, [excalidrawAPI]);
 
   return (
     <DefaultSidebar>
       <DefaultSidebar.TabTriggers>
         <Sidebar.TabTrigger
-          tab="comments"
-          style={{ opacity: openSidebar?.tab === "comments" ? 1 : 0.4 }}
+          tab="documents"
+          style={{ opacity: openSidebar?.tab === "documents" ? 1 : 0.4 }}
+          title="文档页"
+          aria-label="文档页"
         >
-          {messageCircleIcon}
-        </Sidebar.TabTrigger>
-        <Sidebar.TabTrigger
-          tab="presentation"
-          style={{ opacity: openSidebar?.tab === "presentation" ? 1 : 0.4 }}
-        >
-          {presentationIcon}
+          {ImageIcon}
         </Sidebar.TabTrigger>
       </DefaultSidebar.TabTriggers>
-      <Sidebar.Tab tab="comments">
-        <div className="app-sidebar-promo-container">
-          <div
-            className="app-sidebar-promo-image"
-            style={{
-              ["--image-source" as any]: `url(/sidebar-comments-promo-${
-                theme === THEME.DARK ? "dark" : "light"
-              }.jpg)`,
-              opacity: 0.9,
-            }}
-          />
-          <SidebarPromoCopy text="Make comments with Excalidraw+" />
-          <LinkButton
-            href={`${
-              import.meta.env.VITE_APP_PLUS_LP
-            }/plus?utm_source=excalidraw&utm_medium=app&utm_content=comments_promo#excalidraw-redirect`}
-          >
-            Sign up now
-          </LinkButton>
-        </div>
-      </Sidebar.Tab>
-      <Sidebar.Tab tab="presentation" className="px-3">
-        <div className="app-sidebar-promo-container">
-          <div
-            className="app-sidebar-promo-image"
-            style={{
-              ["--image-source" as any]: `url(/sidebar-presentation-promo-${
-                theme === THEME.DARK ? "dark" : "light"
-              }.jpg)`,
-              opacity: 0.7,
-            }}
-          />
-          <SidebarPromoCopy text="Create presentation with Excalidraw+" />
-          <LinkButton
-            href={`${
-              import.meta.env.VITE_APP_PLUS_LP
-            }/plus?utm_source=excalidraw&utm_medium=app&utm_content=presentations_promo#excalidraw-redirect`}
-          >
-            Sign up now
-          </LinkButton>
-        </div>
+      <Sidebar.Tab tab="documents" className="px-3">
+        <DocumentPagesPanel />
       </Sidebar.Tab>
     </DefaultSidebar>
   );

@@ -5,6 +5,8 @@
   </picture>
 </a>
 
+> **📚 教学定制版**：本仓库在官方 Excalidraw 之上加入了面向课堂教学白板的定制层（PDF/Office 讲义导入、按页批注、荧光笔、教师账号、全员跟随等）。定制功能与代码位置见 **[TEACHING-EDITION.md](TEACHING-EDITION.md)**，下方为官方 Excalidraw 说明。
+
 <h4 align="center">
   <a href="https://excalidraw.com">Excalidraw Editor</a> |
   <a href="https://plus.excalidraw.com/blog">Blog</a> |

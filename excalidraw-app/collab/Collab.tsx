@@ -59,6 +59,7 @@ import {
   FIREBASE_STORAGE_PREFIXES,
   INITIAL_SCENE_UPDATE_TIMEOUT,
   LOAD_IMAGES_TIMEOUT,
+  IMAGE_RETRY_INTERVAL_MS,
   WS_SUBTYPES,
   SYNC_FULL_SCENE_INTERVAL_MS,
   WS_EVENTS,
@@ -86,6 +87,7 @@ import {
   importUsernameFromLocalStorage,
   saveUsernameToLocalStorage,
 } from "../data/localStorage";
+import { getAuthEmail } from "../data/auth";
 import { resetBrowserStateVersions } from "../data/tabSync";
 
 import { collabErrorIndicatorAtom } from "./CollabError";
@@ -110,6 +112,9 @@ interface CollabState {
 
 export const activeRoomLinkAtom = atom<string | null>(null);
 export const userToFollowAtom = atom<UserToFollow | null>(null);
+/** socket id of the room's teacher (known to students via TEACHER_ANNOUNCE) */
+export const teacherSocketIdAtom = atom<SocketId | null>(null);
+export const teacherUsernameAtom = atom<string | null>(null);
 
 type CollabInstance = InstanceType<typeof Collab>;
 
@@ -126,6 +131,7 @@ export interface CollabAPI {
   getActiveRoomLink: CollabInstance["getActiveRoomLink"];
   setCollabError: CollabInstance["setErrorDialog"];
   setUserToFollow: CollabInstance["setUserToFollow"];
+  forceAllToFollow: CollabInstance["forceAllToFollow"];
 }
 
 interface CollabProps {
@@ -246,6 +252,7 @@ class Collab extends PureComponent<CollabProps, CollabState> {
       getActiveRoomLink: this.getActiveRoomLink,
       setCollabError: this.setErrorDialog,
       setUserToFollow: this.setUserToFollow,
+      forceAllToFollow: this.forceAllToFollow,
     };
 
     appJotaiStore.set(collabAPIAtom, collabAPI);
@@ -266,6 +273,7 @@ class Collab extends PureComponent<CollabProps, CollabState> {
   };
 
   componentWillUnmount() {
+    this.stopImageRetry();
     window.removeEventListener("online", this.onOfflineStatusToggle);
     window.removeEventListener("offline", this.onOfflineStatusToggle);
     window.removeEventListener(EVENT.BEFORE_UNLOAD, this.beforeUnload);
@@ -366,6 +374,7 @@ class Collab extends PureComponent<CollabProps, CollabState> {
     this.queueBroadcastAllElements.cancel();
     this.queueSaveToFirebase.cancel();
     this.loadImageFiles.cancel();
+    this.stopImageRetry();
     this.resetErrorIndicator(true);
 
     this.saveCollabRoomToFirebase(
@@ -419,6 +428,8 @@ class Collab extends PureComponent<CollabProps, CollabState> {
       this.setIsCollaborating(false);
       this.setActiveRoomLink(null);
       appJotaiStore.set(userToFollowAtom, null);
+      appJotaiStore.set(teacherSocketIdAtom, null);
+      appJotaiStore.set(teacherUsernameAtom, null);
       this.collaborators = new Map();
       this.excalidrawAPI.updateScene({
         collaborators: this.collaborators,
@@ -677,6 +688,33 @@ class Collab extends PureComponent<CollabProps, CollabState> {
             break;
           }
 
+          case WS_SUBTYPES.FORCE_FOLLOW: {
+            // teacher mode (draw.kuxuewuli.top parity): the room initiator can
+            // pull everyone's view to follow theirs. Ignore our own broadcast.
+            const { socketId, username } = decryptedData.payload;
+            if (socketId !== this.portal.socket?.id) {
+              this.setUserToFollow({
+                socketId: socketId as SocketId,
+                username,
+              });
+            }
+            break;
+          }
+
+          case WS_SUBTYPES.TEACHER_ANNOUNCE: {
+            // remember which collaborator is the teacher so students can offer
+            // a "follow teacher" button. Ignore our own broadcast.
+            const { socketId, username } = decryptedData.payload;
+            if (socketId !== this.portal.socket?.id) {
+              appJotaiStore.set(
+                teacherSocketIdAtom,
+                socketId as SocketId,
+              );
+              appJotaiStore.set(teacherUsernameAtom, username);
+            }
+            break;
+          }
+
           default: {
             assertNever(decryptedData, null);
           }
@@ -751,9 +789,11 @@ class Collab extends PureComponent<CollabProps, CollabState> {
         console.error(error);
       } finally {
         this.portal.socketInitialized = true;
+        this.announceTeacherIfNeeded();
       }
     } else {
       this.portal.socketInitialized = true;
+      this.announceTeacherIfNeeded();
     }
     return null;
   };
@@ -805,7 +845,86 @@ class Collab extends PureComponent<CollabProps, CollabState> {
       erroredFiles,
       elements: this.excalidrawAPI.getSceneElementsIncludingDeleted(),
     });
+
+    // A collaborator can join before the sender finished uploading the file
+    // bytes: the first GET 404s and without a retry the image stays broken
+    // forever (the sender's later "saved" broadcast doesn't re-trigger a
+    // fetch on our side). Poll with forceFetchFiles until everything loads.
+    // Document pages (customData.pdfPage) are excluded: their files are
+    // rendered on demand from the shared PDF, and polling them would hammer
+    // the store with 404s for every un-materialized page.
+    if (
+      this.isCollaborating() &&
+      this.hasUnresolvedImageFiles() &&
+      !this.imageRetryTimer
+    ) {
+      this.imageRetryTimer = window.setInterval(() => {
+        if (!this.isCollaborating()) {
+          this.stopImageRetry();
+          return;
+        }
+        if (!this.hasUnresolvedImageFiles()) {
+          this.stopImageRetry();
+          return;
+        }
+        const retryables = this.getNonDocumentImageElements().filter(
+          (el) => el.status !== "saved",
+        );
+        if (!retryables.length) {
+          return;
+        }
+        this.fetchImageFilesFromFirebase({
+          elements: retryables,
+          forceFetchFiles: true,
+        })
+          .then(({ loadedFiles }) => {
+            if (loadedFiles.length) {
+              this.excalidrawAPI.addFiles(loadedFiles);
+            }
+          })
+          .catch(() => {})
+          .finally(() => {
+            // 404s from an earlier attempt poison `isFileTracked` and would
+            // make every subsequent retry a no-op — clear them each round
+            this.fileManager.resetFetchErrors(
+              retryables.map((el) => el.fileId),
+            );
+          });
+      }, IMAGE_RETRY_INTERVAL_MS);
+    }
   }, LOAD_IMAGES_TIMEOUT);
+
+  private imageRetryTimer: number | null = null;
+
+  /** document pages render lazily from the shared PDF; they never go through
+   *  the collab file store, so they must be skipped by the retry logic */
+  private getNonDocumentImageElements = () => {
+    return this.excalidrawAPI
+      .getSceneElementsIncludingDeleted()
+      .filter(
+        (el) =>
+          isInitializedImageElement(el) &&
+          !el.isDeleted &&
+          !(el.customData as { pdfPage?: unknown } | undefined)?.pdfPage,
+      )
+      .map((el) => el as InitializedExcalidrawImageElement);
+  };
+
+  private hasUnresolvedImageFiles = () => {
+    const files = this.excalidrawAPI.getFiles();
+    return this.getNonDocumentImageElements().some(
+      (el) =>
+        // "saved" but with no local file bytes still means broken rendering
+        el.status !== "saved" || !files[el.fileId],
+    );
+  };
+
+  private stopImageRetry = () => {
+    if (this.imageRetryTimer) {
+      window.clearInterval(this.imageRetryTimer);
+      this.imageRetryTimer = null;
+    }
+  };
 
   private handleRemoteSceneUpdate = (
     elements: ReconciledExcalidrawElement[],
@@ -1021,6 +1140,39 @@ class Collab extends PureComponent<CollabProps, CollabState> {
     }
 
     appJotaiStore.set(userToFollowAtom, userToFollow);
+  };
+
+  /**
+   * Teacher mode (draw.kuxuewuli.top parity): broadcast to the whole room that
+   * everyone should follow THIS user's view. Receivers auto-unfollow as soon as
+   * they pan/zoom/draw (the library's built-in requestUnfollow behavior).
+   */
+  forceAllToFollow = () => {
+    const socketId = this.portal.socket?.id;
+    if (socketId) {
+      this.portal.broadcastForceFollow({
+        socketId,
+        username: this.state.username,
+      });
+    }
+  };
+
+  /**
+   * Only a signed-in teacher announces their identity. Called when this client
+   * initializes the room and again whenever a new user joins (so late-joining
+   * students learn who the teacher is).
+   */
+  announceTeacherIfNeeded = () => {
+    if (!getAuthEmail()) {
+      return;
+    }
+    const socketId = this.portal.socket?.id;
+    if (socketId) {
+      this.portal.broadcastTeacher({
+        socketId,
+        username: this.state.username,
+      });
+    }
   };
 
   setUsername = (username: string) => {

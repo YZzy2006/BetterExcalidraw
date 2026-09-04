@@ -118,6 +118,20 @@ export type SocketUpdateDataSource = {
       username: string;
     };
   };
+  FORCE_FOLLOW: {
+    type: WS_SUBTYPES.FORCE_FOLLOW;
+    payload: {
+      socketId: string;
+      username: string;
+    };
+  };
+  TEACHER_ANNOUNCE: {
+    type: WS_SUBTYPES.TEACHER_ANNOUNCE;
+    payload: {
+      socketId: string;
+      username: string;
+    };
+  };
 };
 
 export type SocketUpdateDataIncoming =

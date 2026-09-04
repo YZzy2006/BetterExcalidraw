@@ -52,6 +52,8 @@ class Portal {
         this.collab.getSceneElementsIncludingDeleted(),
         /* syncAll */ true,
       );
+      // a student may have just joined late — re-announce the teacher identity
+      this.collab.announceTeacherIfNeeded();
     });
     this.socket.on("room-user-change", (clients: SocketId[]) => {
       this.collab.setCollaborators(clients);
@@ -251,6 +253,24 @@ class Portal {
     if (this.socket?.id) {
       this.socket.emit(WS_EVENTS.USER_FOLLOW_CHANGE, payload);
     }
+  };
+
+  /** teacher mode: ask every room member to follow this user's view */
+  broadcastForceFollow = (payload: { socketId: string; username: string }) => {
+    const data = {
+      type: WS_SUBTYPES.FORCE_FOLLOW,
+      payload,
+    } as SocketUpdateData;
+    return this._broadcastSocketData(data, true);
+  };
+
+  /** teacher mode: announce which socket is the teacher (id + username) */
+  broadcastTeacher = (payload: { socketId: string; username: string }) => {
+    const data = {
+      type: WS_SUBTYPES.TEACHER_ANNOUNCE,
+      payload,
+    } as SocketUpdateData;
+    return this._broadcastSocketData(data, true);
   };
 }
 

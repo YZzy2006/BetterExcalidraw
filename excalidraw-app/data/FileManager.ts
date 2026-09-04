@@ -77,6 +77,15 @@ export class FileManager {
     );
   };
 
+  /** forget previous fetch failures so the file becomes eligible for
+   *  re-fetching (e.g. a collaborator fetched before the sender finished
+   *  uploading — the 404 must not poison retries forever) */
+  resetFetchErrors = (ids: FileId[]) => {
+    for (const id of ids) {
+      this.erroredFiles_fetch.delete(id);
+    }
+  };
+
   isFileSavedOrBeingSaved = (file: BinaryFileData) => {
     const fileVersion = this.getFileVersion(file);
     return (

@@ -405,21 +405,24 @@ export const ROUGHNESS = {
   cartoonist: 2,
 } as const;
 
-export type StrokeWidthKey = "thin" | "medium" | "bold";
+export type StrokeWidthKey = "thin" | "medium" | "bold" | "extraBold" | "xxl";
 
 export const STROKE_WIDTH_KEYS: readonly StrokeWidthKey[] = [
   "thin",
   "medium",
   "bold",
+  "extraBold",
+  "xxl",
 ];
 
 export const STROKE_WIDTH: Readonly<
-  Record<StrokeWidthKey | "extraBold", ExcalidrawElement["strokeWidth"]>
+  Record<StrokeWidthKey, ExcalidrawElement["strokeWidth"]>
 > = {
   thin: 1,
   medium: 2,
   bold: 4,
-  extraBold: 8, // unused (may be introduced in the future)
+  extraBold: 8,
+  xxl: 14,
 };
 
 // freedraw schema 2.0 uses thinner stroke, but to maintain backwards and
@@ -428,12 +431,13 @@ export const STROKE_WIDTH: Readonly<
 //
 // note that in the UI, STROKE_WIDTH.thin == FREEDRAW_STROKE_WIDTH.thin still
 export const FREEDRAW_STROKE_WIDTH: Readonly<
-  Record<StrokeWidthKey | "extraBold", ExcalidrawElement["strokeWidth"]>
+  Record<StrokeWidthKey, ExcalidrawElement["strokeWidth"]>
 > = {
   thin: 0.5,
   medium: 1,
   bold: 2,
-  extraBold: 4, // legacy (may be used again in the future)
+  extraBold: 4,
+  xxl: 8,
 };
 
 export const getStrokeWidthByKey = (
