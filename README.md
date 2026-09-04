@@ -1,0 +1,2 @@
+# BetterExcalidraw
+基于开源项目Excalidraw的改进以及本土化
