@@ -2,14 +2,23 @@ import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
 import { insertPdf } from "./insertPdf";
 
-// The convert server is deny-list based: it accepts almost any document and lets
-// LibreOffice sniff the content. So we let the picker offer any file type.
-export const IMPORT_OFFICE_ACCEPT = "*";
+// Allow-list on the picker (the convert server additionally denies archives,
+// executables, media & fonts). LibreOffice sniffs real content, so a renamed
+// file still fails cleanly server-side — but we don't offer e.g. .exe/.zip in
+// the dialog in the first place.
+export const IMPORT_OFFICE_ACCEPT =
+  ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.odp,.rtf,.txt,.csv,.html,.htm,.wps,.et,.dps";
 
 const SUPPORTED_FORMATS_TEXT =
-  "几乎任意文档(Word/Excel/PPT/LibreOffice/PDF/文本/网页等),视频、音频、压缩包、可执行文件除外";
+  "Word/Excel/PPT/PDF/文本/网页等文档格式(不支持音视频、压缩包、可执行文件)";
 
 export const officeFileToPdf = async (file: File): Promise<Blob> => {
+  // client-side extension guard (defense in depth on top of the picker + the
+  // server deny-list): never POST anything that isn't a document-ish file
+  const EXT_RE = /\.(pdf|docx?|xlsx?|pptx?|od[stp]|rtf|csv|txt|html?|wps|et|dps)$/i;
+  if (!EXT_RE.test(file.name || "")) {
+    throw new Error(`不支持的文件类型。支持的格式:${SUPPORTED_FORMATS_TEXT}`);
+  }
   const convertUrl = import.meta.env.VITE_APP_CONVERT_URL;
   if (!convertUrl) {
     throw new Error("未配置文档转换服务(VITE_APP_CONVERT_URL)");

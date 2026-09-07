@@ -37,7 +37,12 @@ export const exportAnnotatedPdf = async (
 ): Promise<void> => {
   const all = excalidrawAPI.getSceneElements();
   const pages = all
-    .filter((el) => el.type === "image" && getPageMeta(el)?.docId === docId)
+    .filter(
+      (el) =>
+        !el.isDeleted &&
+        el.type === "image" &&
+        getPageMeta(el)?.docId === docId,
+    )
     .sort((a, b) => (getPageMeta(a)?.page ?? 0) - (getPageMeta(b)?.page ?? 0));
   if (pages.length === 0) {
     throw new Error("没有可导出的文档页");
@@ -84,18 +89,23 @@ export const exportAnnotatedPdf = async (
       { exportBackground: true, viewBackgroundColor: "#ffffff" },
     );
 
+    const orientation =
+      canvas.width >= canvas.height ? "landscape" : "portrait";
+
     if (!pdf) {
       pdf = new jsPDF({
-        orientation: canvas.height >= canvas.width ? "portrait" : "landscape",
+        orientation,
         unit: "px",
         format: [canvas.width, canvas.height],
         compress: true,
       });
     } else {
-      pdf.addPage([canvas.width, canvas.height], "portrait");
+      pdf.addPage([canvas.width, canvas.height], orientation);
     }
+    // JPEG at high quality keeps the PDF compact; 0.95 minimizes text/line
+    // artifacts for lecture handouts without PNG's 3-5MB-per-page bloat
     pdf.addImage(
-      canvas.toDataURL("image/jpeg", 0.92),
+      canvas.toDataURL("image/jpeg", 0.95),
       "JPEG",
       0,
       0,

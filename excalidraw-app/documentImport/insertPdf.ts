@@ -42,15 +42,6 @@ export const insertPdf = async (
 ): Promise<void> => {
   const docId = generateDocId();
   const pageCount = await registerPdf(docId, blob);
-  // share the original document so any collaborator can page through it locally
-  void uploadPdfSource(docId, blob);
-  // keep the teacher's original file (PDF picks: the same bytes; office
-  // imports: the untouched .docx/.pptx) available for later download
-  if (opts?.sourceFile) {
-    void uploadSourceFile(docId, opts.sourceFile, opts.sourceName);
-  } else {
-    void uploadSourceFile(docId, blob, opts?.sourceName);
-  }
   if (pageCount === 0) {
     throw new Error("PDF 读取失败或没有可用的页面");
   }
@@ -59,8 +50,18 @@ export const insertPdf = async (
       `此文档有 ${pageCount} 页,只导入前 ${PDF_PAGES_LIMIT} 页。是否继续?`,
     );
     if (!proceed) {
+      // user cancelled: never upload anything, so no orphaned server files
       return;
     }
+  }
+  // share the original document so any collaborator can page through it locally
+  void uploadPdfSource(docId, blob);
+  // keep the teacher's original file (PDF picks: the same bytes; office
+  // imports: the untouched .docx/.pptx) available for later download
+  if (opts?.sourceFile) {
+    void uploadSourceFile(docId, opts.sourceFile, opts.sourceName);
+  } else {
+    void uploadSourceFile(docId, blob, opts?.sourceName);
   }
 
   const fileIds: FileId[] = [];

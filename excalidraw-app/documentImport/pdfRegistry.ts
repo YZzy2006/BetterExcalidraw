@@ -11,7 +11,13 @@ import type {
 } from "@excalidraw/element/types";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
-import { pdfOpen, renderPageImage, renderPdfPages } from "./pdfToImages";
+import {
+  pdfOpen,
+  renderPageImage,
+  renderPdfPages,
+} from "./pdfToImages";
+
+import type { PdfPageImage } from "./pdfToImages";
 
 import type { PDFDocumentProxy } from "pdfjs-dist";
 
@@ -116,7 +122,7 @@ export const uploadSourceFile = async (
   docId: string,
   file: File | Blob,
   originalName?: string,
-): Promise<void> => {
+): Promise<boolean> => {
   const name =
     originalName ||
     (typeof File !== "undefined" && file instanceof File ? file.name : "") ||
@@ -129,13 +135,23 @@ export const uploadSourceFile = async (
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}`);
     }
-    await fetch(`${DATA_BASE}files/docs/${docId}-srcmeta`, {
+    const metaRes = await fetch(`${DATA_BASE}files/docs/${docId}-srcmeta`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, type: (file as File).type || "" }),
     });
+    if (!metaRes.ok) {
+      throw new Error(`meta HTTP ${metaRes.status}`);
+    }
+    return true;
   } catch (error) {
     console.warn("[documentImport] upload original source failed", error);
+    // Surface the failure — the teacher may otherwise assume the original
+    // file will be downloadable after class when it never made it up
+    window.alert(
+      "原始文件上传失败，课后将无法「下载原文件」。\n\n请检查网络后重新导入一次。",
+    );
+    return false;
   }
 };
 
@@ -366,6 +382,57 @@ export const materializePage = async (
   renderedFiles.set(key, file);
   excalidrawAPI.addFiles([file]);
   repointPageElements(excalidrawAPI, docId, page, targetFileId);
+  // Mixed-orientation / mixed-size PDFs (landscape+portrait, A4+A3 scans…)
+  // can't be represented by the page-1 size assumed at import. Once the real
+  // page is rendered we know its true aspect ratio — adjust the canvas element
+  // so annotations/export proportions are correct. Width is kept, height
+  // follows the real ratio, and the element is re-anchored by its top-left so
+  // existing annotations don't drift.
+  fixPageElementAspectRatio(excalidrawAPI, docId, page, image);
+};
+
+/**
+ * Corrects a page element's height to the real rendered aspect ratio when it
+ * deviates noticeably from the page-1-derived size used at import time.
+ */
+const fixPageElementAspectRatio = (
+  excalidrawAPI: ExcalidrawImperativeAPI,
+  docId: string,
+  page: number,
+  image: PdfPageImage,
+) => {
+  const ratio = image.height / image.width;
+  if (!Number.isFinite(ratio) || ratio <= 0) {
+    return;
+  }
+  const elements = excalidrawAPI.getSceneElementsIncludingDeleted();
+  let changed = false;
+  const next = elements.map((el) => {
+    const p = el.customData?.pdfPage as
+      | { docId?: string; page?: number }
+      | undefined;
+    if (el.type !== "image" || p?.docId !== docId || p?.page !== page) {
+      return el as ExcalidrawElement;
+    }
+    const elRatio = el.height / el.width;
+    // tolerance: within 1.5% the assumed size is fine
+    if (Math.abs(elRatio - ratio) / ratio <= 0.015) {
+      return el as ExcalidrawElement;
+    }
+    changed = true;
+    const newHeight = Math.round(el.width * ratio);
+    const newY = el.y + (el.height - newHeight) / 2;
+    return newElementWith(el, {
+      height: newHeight,
+      y: newY,
+    }) as ExcalidrawElement;
+  });
+  if (changed) {
+    excalidrawAPI.updateScene({
+      elements: next,
+      captureUpdate: CaptureUpdateAction.NEVER,
+    });
+  }
 };
 
 /**
